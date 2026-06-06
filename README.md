@@ -1,6 +1,6 @@
 # 🛡️ Adaptive Honeypot Controller
 
-> **ENGR-202C · UCLA · KK**
+> **ENGR-202C · UCLA · Khrystyna Kodatska
 
 An AI-driven honeypot simulation that autonomously detects, deceives, and learns from simulated cyber attackers in real time. The system follows an **Observe → Decide → Act → Evaluate** agentic loop powered by Google's Gemini API, with a rule-based fallback for resilience.
 
@@ -141,7 +141,7 @@ adaptive-honeypot-controller/
 | Document | Description |
 |----------|-------------|
 | [`reports/honeypot_project_report.docx`](reports/honeypot_project_report.docx) | Full written report — AI performance analysis with numerical data |
-| [`presentation/adaptive_honeypot_controller.pptx`](presentation/adaptive_honeypot_controller.pptx) | 7-slide UCLA-branded presentation deck |
+
 
 ---
 
@@ -155,10 +155,6 @@ adaptive-honeypot-controller/
 ---
 
 ## 🔭 Future Work
-
-- Replace Gemini API with a local LLM (Ollama/Mistral 7B) for sub-100 ms decisions
-- Persist `AgentMemory` to SQLite across sessions
-- Integrate real SSH logs via [Cowrie](https://github.com/cowrie/cowrie)
 - Add ≥2-cycle confirmation threshold before escalating strategy
 
 ---
