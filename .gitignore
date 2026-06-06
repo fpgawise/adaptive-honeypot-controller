@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.env
+venv/
+.venv/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Reports generated at runtime
+reports/honeypot_report_*.txt
+reports/honeypot_logs_*.json
+
+# OS
+.DS_Store
+Thumbs.db
