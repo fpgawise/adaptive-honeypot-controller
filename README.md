@@ -139,7 +139,7 @@ adaptive-honeypot-controller/
 
 | Document | Description |
 |----------|-------------|
-| [`reports/honeypot_project_report.pdf`](reports/honeypot_project_report.docx) | Full written report — AI performance analysis with numerical data |
+| [`reports/honeypot_project_report.pdf`](reports/honeypot_project_report.pdf) | Full written report — AI performance analysis with numerical data |
 
 
 ---
