@@ -1,3 +1,4 @@
+# Import libraries used for data handling, random simulation, files, and UI
 import json
 import random
 import re
@@ -8,16 +9,19 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
+# Third-party libraries for dashboard, tables, and charts
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
+# Gemini is optional. If it is not installed, the program still works with rule-based logic.
 try:
     import google.generativeai as genai
 except ImportError:
     genai = None
 
 
+# Different phases an attacker can move through in the simulation
 PHASES = [
     "scanning",
     "brute_force",
@@ -27,6 +31,7 @@ PHASES = [
     "dormant",
 ]
 
+# Colors used in the dashboard for each attacker phase
 PHASE_COLORS = {
     "scanning": "#FFD700",
     "brute_force": "#FF6B6B",
@@ -36,6 +41,7 @@ PHASE_COLORS = {
     "dormant": "#808080",
 }
 
+# Icons used to make attacker cards easier to understand visually
 PHASE_ICONS = {
     "scanning": "🔍",
     "brute_force": "🔐",
@@ -48,6 +54,7 @@ PHASE_ICONS = {
 
 @dataclass
 class Attacker:
+    # This class stores information about one simulated attacker
     id: str
     ip: str
     method: str
@@ -61,6 +68,7 @@ class Attacker:
     phase_history: List[Dict]
 
     def to_dict(self) -> Dict:
+        # Convert the attacker object into a dictionary for display/export
         return {
             "id": self.id,
             "ip": self.ip,
@@ -78,6 +86,7 @@ class Attacker:
 
 @dataclass
 class Experience:
+    # This stores one memory record from the agent's past actions
     state: str
     action: str
     outcome: str
@@ -86,21 +95,25 @@ class Experience:
 
 
 class AgentMemory:
+    # This class helps the agent remember previous actions and results
     def __init__(self, limit: int = 100):
         self.experiences = deque(maxlen=limit)
         self.results = defaultdict(list)
         self.impacts = defaultdict(list)
 
     def add(self, exp: Experience):
+        # Save a new experience after the agent takes an action
         self.experiences.append(exp)
         self.results[exp.action].append(exp.outcome)
         self.impacts[exp.action].append(exp.impact)
 
     def repeated_recently(self, action: str) -> bool:
+        # Check if the same action was used recently
         recent = list(self.experiences)[-3:]
         return any(exp.action == action for exp in recent)
 
     def should_avoid(self, action: str) -> bool:
+        # Decide if an action should be avoided based on past results
         outcomes = self.results.get(action, [])
         if len(outcomes) < 3:
             return False
@@ -109,6 +122,7 @@ class AgentMemory:
         return failure_rate > 0.6 or recent_average < 5 or self.repeated_recently(action)
 
     def stats(self) -> pd.DataFrame:
+        # Create a summary table of action results
         rows = []
         for action, outcomes in self.results.items():
             impacts = self.impacts[action]
@@ -125,6 +139,7 @@ class AgentMemory:
 
 
 class SimulatedHoneypot:
+    # This class represents the simulated honeypot environment
     def __init__(self):
         self.config = {
             "banner": "SSH-2.0-OpenSSH_7.4",
@@ -140,13 +155,16 @@ class SimulatedHoneypot:
         self.update_scores()
 
     def now(self) -> str:
+        # Return the current time as a formatted string
         return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     def log(self, text: str):
+        # Add an event message to the honeypot log
         self.logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] {text}")
         self.logs = self.logs[-300:]
 
     def _add_initial_attackers(self):
+        # Add a few starting attackers so the simulation is not empty
         starters = [
             ("192.168.1.100", "ssh", 0.9, 0.3, 0.8),
             ("10.0.0.45", "web", 0.6, 0.8, 0.7),
@@ -163,6 +181,7 @@ class SimulatedHoneypot:
         skill: Optional[float] = None,
         persistence: Optional[float] = None,
     ):
+        # Create a new simulated attacker with either given or random values
         if ip is None:
             ip = f"10.{random.randint(1, 250)}.{random.randint(1, 250)}.{random.randint(1, 250)}"
         if method is None:
@@ -185,6 +204,7 @@ class SimulatedHoneypot:
         self.log(f"New attacker detected: {attacker.ip}")
 
     def update_attackers(self):
+        # Update attacker behavior and move attackers between phases
         if random.random() < 0.12 and len(self.attackers) < 12:
             self.add_attacker()
 
@@ -233,6 +253,7 @@ class SimulatedHoneypot:
         self.update_scores()
 
     def calculate_attacker_risk(self, attacker: Attacker) -> float:
+        # Calculate risk based on phase, skill, aggression, and persistence
         base = {
             "scanning": 10,
             "brute_force": 30,
@@ -244,12 +265,14 @@ class SimulatedHoneypot:
         return round(base * (0.4 * attacker.skill + 0.3 * attacker.aggression + 0.3 * attacker.persistence), 1)
 
     def phase_counts(self) -> Dict[str, int]:
+        # Count how many attackers are in each phase
         counts = defaultdict(int)
         for attacker in self.attackers.values():
             counts[attacker.phase] += 1
         return dict(counts)
 
     def update_scores(self) -> Dict:
+        # Calculate dashboard scores for engagement, risk, deception, and agent performance
         attackers = list(self.attackers.values())
         active = [a for a in attackers if a.phase != "dormant"]
         risks = [a.risk for a in attackers]
@@ -267,6 +290,7 @@ class SimulatedHoneypot:
         return scores
 
     def deploy_artifact(self, artifact_type: str, content: str) -> Dict:
+        # Add a deception artifact such as a fake endpoint or honeytoken
         artifact = {
             "id": str(uuid.uuid4())[:8],
             "type": artifact_type,
@@ -279,6 +303,7 @@ class SimulatedHoneypot:
         return artifact
 
     def apply_action(self, action: Dict) -> Dict:
+        # Apply the action selected by the agent
         action_name = action.get("action", "observe")
         params = action.get("params", {})
         result = {"success": True, "message": "", "impact": round(random.uniform(4, 18), 1)}
@@ -315,6 +340,7 @@ class SimulatedHoneypot:
         return result
 
     def status(self) -> Dict:
+        # Return the current honeypot status for the dashboard and agent
         return {
             "attackers": [a.to_dict() for a in self.attackers.values()],
             "phase_counts": self.phase_counts(),
@@ -325,12 +351,14 @@ class SimulatedHoneypot:
 
 
 class HoneypotAgent:
+    # This is the decision-making agent that controls the honeypot
     def __init__(self, honeypot: SimulatedHoneypot, api_key: str = ""):
         self.honeypot = honeypot
         self.memory = AgentMemory()
         self.trace: List[Dict] = []
         self.model = None
 
+        # Try to connect to Gemini if an API key is provided
         if api_key and genai is not None:
             try:
                 genai.configure(api_key=api_key)
@@ -339,6 +367,7 @@ class HoneypotAgent:
                 self.honeypot.log(f"Gemini setup failed: {exc}")
 
     def choose_action(self, state: Dict) -> Dict:
+        # Use Gemini first if available, otherwise use rule-based logic
         if self.model is not None:
             decision = self.ask_gemini(state)
             if decision:
@@ -346,6 +375,7 @@ class HoneypotAgent:
         return self.rule_based_action(state)
 
     def ask_gemini(self, state: Dict) -> Optional[Dict]:
+        # Send current honeypot state to Gemini and ask it to choose an action
         prompt = f"""
 You are helping control a simulated honeypot for a class project.
 
@@ -374,6 +404,7 @@ Return only JSON in this format:
         return None
 
     def rule_based_action(self, state: Dict) -> Dict:
+        # Rule-based backup logic when Gemini is not available
         phases = state["phase_counts"]
 
         if phases.get("data_exfiltration", 0) or phases.get("persistence", 0):
@@ -410,6 +441,7 @@ Return only JSON in this format:
         }
 
     def run_cycle(self) -> Dict:
+        # Main agent loop: observe, decide, act, update, and remember
         cycle_number = len(self.trace) + 1
         state = self.honeypot.status()
         decision = self.choose_action(state)
@@ -447,6 +479,7 @@ Return only JSON in this format:
 
 
 def build_report(honeypot: SimulatedHoneypot, agent: HoneypotAgent) -> Path:
+    # Create a project report and save logs to files
     output_dir = Path("reports")
     output_dir.mkdir(exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -471,25 +504,6 @@ What the program did
 - Ran {len(agent.trace)} decision cycles.
 - Stored {len(agent.memory.experiences)} memory records.
 - Deployed {len(honeypot.config['deception_artifacts'])} deception artifacts.
-
-Agent loop
-1. Observe the current attacker phases.
-2. Choose a response with Gemini API when available, otherwise use rule-based logic.
-3. Apply the response to the honeypot configuration.
-4. Update attacker behavior and save the result.
-
-What worked well
-- The agent adjusted the honeypot based on attacker phase.
-- Brute force behavior usually led to longer login delays.
-- Exploit and later-stage behavior led to fake endpoints or honeytokens.
-- The dashboard made the decisions and score changes easier to review.
-
-What did not work well
-- This is still a simulation, so the attacker behavior is simplified.
-- The scoring system is approximate and not based on real logs.
-- Gemini API failures fall back to rules, so not every run uses the API.
-- The memory does not persist after restarting the app.
-
 Action summary
 {stats_text}
 """
@@ -500,11 +514,13 @@ Action summary
 
 
 def reset_app(api_key: str = ""):
+    # Reset the honeypot and agent in Streamlit session state
     st.session_state.honeypot = SimulatedHoneypot()
     st.session_state.agent = HoneypotAgent(st.session_state.honeypot, api_key)
 
 
 def init_app():
+    # Initialize Streamlit session state when the app first starts
     if "api_key" not in st.session_state:
         st.session_state.api_key = ""
     if "honeypot" not in st.session_state:
@@ -512,6 +528,7 @@ def init_app():
 
 
 def attacker_table(attackers: List[Dict]) -> pd.DataFrame:
+    # Convert attacker data into a table for the dashboard
     rows = []
     for attacker in attackers:
         rows.append(
@@ -530,6 +547,7 @@ def attacker_table(attackers: List[Dict]) -> pd.DataFrame:
 
 
 def draw_phase_chart(phase_counts: Dict[str, int]):
+    # Draw a pie chart showing the attacker phase distribution
     labels = list(phase_counts.keys())
     values = list(phase_counts.values())
     colors = [PHASE_COLORS.get(label, "#999999") for label in labels]
@@ -549,6 +567,7 @@ def draw_phase_chart(phase_counts: Dict[str, int]):
 
 
 def draw_score_chart(history: List[Dict]):
+    # Draw score history over time
     if not history:
         st.info("Run a cycle to collect scores.")
         return
@@ -563,6 +582,7 @@ def draw_score_chart(history: List[Dict]):
 
 
 def show_cards(attackers: List[Dict]):
+    # Display attacker information as visual cards
     cols = st.columns(min(3, len(attackers)))
     for index, attacker in enumerate(attackers[:6]):
         phase = attacker["phase"]
@@ -582,12 +602,14 @@ def show_cards(attackers: List[Dict]):
 
 
 def render_dashboard():
+    # Main Streamlit dashboard layout
     st.set_page_config(page_title="Honeypot Dashboard", page_icon="🛡️", layout="wide")
     init_app()
 
     st.title("Honeypot Controller")
     st.caption("Simulated environment for testing an observe, decide, act, evaluate loop.")
 
+    # Sidebar contains controls for running and resetting the simulation
     with st.sidebar:
         st.header("Controls")
         api_key = st.text_input("Gemini API key", value=st.session_state.api_key, type="password")
@@ -622,11 +644,13 @@ def render_dashboard():
             path = build_report(st.session_state.honeypot, st.session_state.agent)
             st.success(f"Saved: {path}")
 
+    # Get the current honeypot and agent state
     honeypot = st.session_state.honeypot
     agent = st.session_state.agent
     state = honeypot.status()
     scores = state["scores"]
 
+    # Top dashboard metrics
     metric_cols = st.columns(5)
     metric_cols[0].metric("Attackers", len(state["attackers"]))
     metric_cols[1].metric("Risk", scores["risk"])
@@ -634,6 +658,7 @@ def render_dashboard():
     metric_cols[3].metric("Deception", scores["deception"])
     metric_cols[4].metric("Agent", scores["agent"])
 
+    # Main dashboard tabs
     tab_dashboard, tab_cycles, tab_memory, tab_deception, tab_export = st.tabs(
         ["Dashboard", "Cycles", "Memory", "Deception", "Export"]
     )
@@ -712,5 +737,6 @@ def render_dashboard():
         )
 
 
+# Run the Streamlit app
 if __name__ == "__main__":
     render_dashboard()
