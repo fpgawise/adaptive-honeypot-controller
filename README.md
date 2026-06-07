@@ -115,10 +115,9 @@ adaptive-honeypot-controller/
 │   ├── architecture_diagram.png
 │   ├── dashboard_overview.png
 │   └── attacker_table.png
-├── presentation/
-│   └── adaptive_honeypot_controller.pptx   # 7-slide deck (UCLA template)
+│   
 └── reports/
-    └── honeypot_project_report.docx        # Written AI performance report
+    └── honeypot_project_report.docx        # Written performance report
 ```
 
 ---
