@@ -117,7 +117,7 @@ adaptive-honeypot-controller/
 │   └── attacker_table.png
 │   
 └── reports/
-    └── honeypot_project_report.docx        # Written performance report
+    └── honeypot_project_report.pdf        # Written performance report
 ```
 
 ---
